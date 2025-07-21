@@ -1,0 +1,137 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
+)
+
+type bline []byte
+type bgreed []bline
+type point struct {
+	x int
+	y int
+}
+
+func main() {
+	in := bufio.NewReader(os.Stdin)
+	out := bufio.NewWriter(os.Stdout)
+	defer out.Flush()
+	var taskCount int
+
+	fmt.Fscan(in, &taskCount)
+	fmt.Fscanln(in)
+
+	// taskCount = 1
+	for i := 0; i < taskCount; i++ {
+		doTask(in, out)
+	}
+}
+
+func doTask(in *bufio.Reader, out *bufio.Writer) {
+	var sy, sx int
+	fmt.Fscan(in, &sy, &sx)
+	fmt.Fscanln(in)
+
+	g := readGrid(in, sx, sy)
+
+	// printGrid(out, g)
+
+	regs := ""
+	start := point{x: 0, y: 0}
+	for {
+		start, ok := getNextRegion(g, sx, sy, start)
+		if !ok {
+			break
+		}
+		c := cleanRegion(g, sx, sy, start)
+		if strings.IndexByte(regs, c) != -1 {
+			fmt.Fprintln(out, "NO")
+			return
+		}
+		regs += string(c)
+
+		// fmt.Fprintln(out)
+		// printGrid(out, g)
+	}
+	fmt.Fprintln(out, "YES")
+}
+
+func getNextRegion(g bgreed, sx int, sy int, start point) (point, bool) {
+	for y := start.y; y < sy; y++ {
+		for x := start.x; x < sx; x++ {
+			if g[y][x] != '.' {
+				return point{x: x, y: y}, true
+			}
+		}
+	}
+	return point{}, false
+}
+
+func cleanRegion(g bgreed, sx int, sy int, start point) byte {
+	c := getPoint(g, sx, sy, start)
+	next := make([]point, 0, 1000)
+	next = append(next, start)
+
+	for i := 0; i < len(next); i++ {
+		p := next[i]
+		next = append(next, getRelated(g, sx, sy, p, c)...)
+		g[p.y][p.x] = '.'
+	}
+	return c
+}
+
+func getRelated(g bgreed, sx int, sy int, p point, c byte) []point {
+	rel := []point{}
+
+	pt := point{x: p.x - 2, y: p.y}
+	if getPoint(g, sx, sy, pt) == c {
+		rel = append(rel, pt)
+	}
+
+	pt = point{x: p.x + 2, y: p.y}
+	if getPoint(g, sx, sy, pt) == c {
+		rel = append(rel, pt)
+	}
+
+	pt = point{x: p.x + 1, y: p.y - 1}
+	if getPoint(g, sx, sy, pt) == c {
+		rel = append(rel, pt)
+	}
+
+	pt = point{x: p.x - 1, y: p.y - 1}
+	if getPoint(g, sx, sy, pt) == c {
+		rel = append(rel, pt)
+	}
+
+	pt = point{x: p.x + 1, y: p.y + 1}
+	if getPoint(g, sx, sy, pt) == c {
+		rel = append(rel, pt)
+	}
+
+	pt = point{x: p.x - 1, y: p.y + 1}
+	if getPoint(g, sx, sy, pt) == c {
+		rel = append(rel, pt)
+	}
+
+	return rel
+}
+
+func getPoint(g bgreed, sx int, sy int, p point) byte {
+	if p.x < 0 || p.x >= sx || p.y < 0 || p.y >= sy {
+		return '.'
+	}
+
+	return g[p.y][p.x]
+}
+
+func readGrid(in *bufio.Reader, sx int, sy int) bgreed {
+	grid := bgreed{}
+	for i := 0; i < sy; i++ {
+		var line bline
+		fmt.Fscanln(in, &line)
+		grid = append(grid, line)
+	}
+	return grid
+}
