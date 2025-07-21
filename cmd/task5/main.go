@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"os"
 )
@@ -55,60 +56,115 @@ func doTask(in *bufio.Reader, out *bufio.Writer) {
 
 	// g.mirorRtoL(4)
 	// g.mirorLtoR(3)
-	// g.mirorTtoB(3)
-	// g.mirorBtoT(4)
-	g = g._expand(3, 3)
-	g.printGrid(out)
+	g.mirorTtoB(4)
+	// g.mirorBtoT(2)
+	// g = g._expand(0, 3)
+	// g.printGrid(out)
 
-	g = g._reduce()
+	// g._reduce()
 	g.printGrid(out)
 
 }
 
+func (g *grid) mirorTtoB(line int) {
+	ey := g.sy
+	eg := g._expand(0, ey)
+
+	line -= 1
+	shift_y_max := line
+	for shift_y := 0; shift_y < shift_y_max; shift_y++ {
+		src_y := line - shift_y - 1
+		dst_y := line + shift_y
+		for x := 0; x < eg.sx; x++ {
+			eg.g[ey+dst_y][x] = eg.g[ey+src_y][x]
+		}
+	}
+	eg.cleanT(line + ey)
+	eg._reduce()
+	*g = *eg
+}
+
 func (g *grid) mirorBtoT(line int) {
+	ey := g.sy
+	eg := g._expand(0, ey)
+
 	line -= 1
 	shift_y_max := g.sy - line
 	for shift_y := 0; shift_y < shift_y_max; shift_y++ {
 		src_y := line + shift_y
 		dst_y := line - shift_y - 1
 		for x := 0; x < g.sx; x++ {
-			g.g[dst_y][x] = g.g[src_y][x]
+			eg.g[dst_y+ey][x] = eg.g[src_y+ey][x]
 		}
 	}
-	g.cleanB(line)
+	eg.cleanB(line + ey)
+	eg._reduce()
+	*g = *eg
+}
+
+func (g *grid) mirorRtoL(col int) {
+	ex := g.sx
+	eg := g._expand(ex, 0)
+
+	col -= 1
+	shift_x_max := g.sx - col
+	for y := 0; y < g.sy; y++ {
+		for shift_x := 0; shift_x < shift_x_max; shift_x++ {
+			src_x := col + shift_x
+			dst_x := col - shift_x - 1
+			eg.g[y][dst_x+ex] = eg.g[y][src_x+ex]
+		}
+	}
+	eg.cleanR(col + ex)
+	eg._reduce()
+	*g = *eg
+}
+
+func (g *grid) mirorLtoR(col int) {
+	ex := g.sx
+	eg := g._expand(ex, 0)
+
+	col -= 1
+	shift_x_max := col
+	for y := 0; y < g.sy; y++ {
+		for shift_x := 0; shift_x < shift_x_max; shift_x++ {
+			src_x := col - shift_x - 1
+			dst_x := col + shift_x
+
+			eg.g[y][dst_x+ex] = eg.g[y][src_x+ex]
+		}
+	}
+	eg.cleanL(col + ex)
+	eg._reduce()
+	*g = *eg
 }
 
 func (g *grid) _expand(ex int, ey int) *grid {
-	filler := make([]byte, g.sx+(ex*2))
-	for i := range filler {
-		filler[i] = '.'
-	}
-
 	ng := grid{
 		g: make([][]byte, 0, g.sy+(2*ey)),
 	}
 	for y := 0; y < ey; y++ {
-		ng.g = append(ng.g, filler)
+		ng.g = append(ng.g, bytes.Repeat([]byte{'.'}, g.sx+(ex*2)))
 	}
 
 	for y := 0; y < g.sy; y++ {
 		line := make([]byte, 0, g.sx+(2*ex))
-		line = append(line, filler[0:ex]...)
+		line = append(line, bytes.Repeat([]byte{'.'}, ex)...)
 		line = append(line, g.g[y]...)
-		line = append(line, filler[0:ex]...)
+		line = append(line, bytes.Repeat([]byte{'.'}, ex)...)
 		ng.g = append(ng.g, line)
 	}
 
 	for y := 0; y < ey; y++ {
-		ng.g = append(ng.g, filler)
+		ng.g = append(ng.g, bytes.Repeat([]byte{'.'}, g.sx+(ex*2)))
 	}
-	ng.sx = g.sx + 2*ex
-	ng.sy = g.sy + 2*ey
+	ng.sx = g.sx + (2 * ex)
+	ng.sy = g.sy + (2 * ey)
 
 	return &ng
 }
 
-func (g *grid) _reduce() *grid {
+func (g *grid) _reduce() {
 	ng := grid{
 		g: [][]byte{},
 	}
@@ -116,13 +172,13 @@ func (g *grid) _reduce() *grid {
 	lx := 0
 	for y := 0; y < g.sy; y++ {
 		clrY := true
-		for x := 0; x < g.sy; x++ {
+		for x := 0; x < g.sx; x++ {
 			if g.g[y][x] != '.' {
 				clrY = false
-				if fx > x {
+				if x < fx {
 					fx = x
 				}
-				if lx < x {
+				if x > lx {
 					lx = x
 				}
 			}
@@ -132,73 +188,14 @@ func (g *grid) _reduce() *grid {
 		}
 	}
 
-	ng.sy = len(ng.g)
-	for y := 0; y < ng.sy; y++ {
-		ng.g[y] = ng.g[y][fx : lx+1]
-	}
-	ng.sx = lx - fx + 1
+	g.g = ng.g
+	g.sy = len(ng.g)
+	g.sx = lx - fx + 1
 
-	// g.g = ng.g
-	// g.sy = len(ng.g)
-
-	// for y := 0; y < g.sy; y++ {
-	// 	g.g[y] = g.g[y][fx : lx+1]
-	// }
-	// g.sx = lx - fx + 1
-	return &ng
-}
-
-// func (g *grid) mirorBtoT(line int) {
-// 	line -= 1
-// 	shift_y_max := g.sy - line
-// 	for shift_y := 0; shift_y < shift_y_max; shift_y++ {
-// 		src_y := line + shift_y
-// 		dst_y := line - shift_y - 1
-// 		for x := 0; x < g.sx; x++ {
-// 			g.g[dst_y][x] = g.g[src_y][x]
-// 		}
-// 	}
-// 	g.cleanB(line)
-// }
-
-func (g *grid) mirorTtoB(line int) {
-	line -= 1
-	shift_y_max := line
-	for shift_y := 0; shift_y < shift_y_max; shift_y++ {
-		src_y := line - shift_y - 1
-		dst_y := line + shift_y
-		for x := 0; x < g.sy; x++ {
-			g.g[dst_y][x] = g.g[src_y][x]
-		}
-	}
-	g.cleanT(line)
-}
-
-func (g *grid) mirorLtoR(col int) {
-	col -= 1
-	shift_x_max := col
 	for y := 0; y < g.sy; y++ {
-		for shift_x := 0; shift_x < shift_x_max; shift_x++ {
-			src_x := col - shift_x - 1
-			dst_x := col + shift_x
-
-			g.g[y][dst_x] = g.g[y][src_x]
-		}
+		g.g[y] = g.g[y][fx : lx+1]
 	}
-	g.cleanL(col)
-}
 
-func (g *grid) mirorRtoL(col int) {
-	col -= 1
-	shift_x_max := g.sx - col
-	for y := 0; y < g.sy; y++ {
-		for shift_x := 0; shift_x < shift_x_max; shift_x++ {
-			src_x := col + shift_x
-			dst_x := col - shift_x - 1
-			g.g[y][dst_x] = g.g[y][src_x]
-		}
-	}
-	g.cleanR(col)
 }
 
 func (g *grid) cleanT(line int) {
