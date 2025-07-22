@@ -13,25 +13,34 @@ type grid struct {
 	sy int
 }
 
-// type point struct {
-// 	x int
-// 	y int
-// }
+type Point struct {
+	x int
+	y int
+}
 
 type Op struct {
 	s int
 	e int
 }
 
+var gout *bufio.Writer
+
 func main() {
 	in := bufio.NewReader(os.Stdin)
 	out := bufio.NewWriter(os.Stdout)
+	gout = out
 	defer out.Flush()
 	var cnt int
 
+	// gg := grid{sx: 1, sy: 3}
+
+	// _numToPoint(&gg, 5)
+	// return
+
 	fmt.Fscan(in, &cnt)
-	cnt = 1
+	// cnt = 1
 	for i := 1; i <= cnt; i++ {
+		fmt.Fprintf(out, "i: %v\n", i)
 		doTask(in, out)
 	}
 }
@@ -42,10 +51,25 @@ func doTask(in *bufio.Reader, out *bufio.Writer) {
 	fmt.Fscanln(in)
 
 	g := readGrid(in, sx, sy)
-	readOps(in, cnt)
+	ops := readOps(in, cnt)
+
+	g.printGrid(out)
+	for _, op := range ops {
+		if !g.applyOp(op) {
+			fmt.Fprintln(out, "Unsuported ops (may be later)")
+			return
+		}
+		g.printGrid(out)
+	}
+
+	// readOps(in, cnt)
+	// g.printGrid(out)
+	// g.mirorRtoL(2)
+
+	// g.printGrid(out)
 
 	// cg := g.copyGrid()
-	g.printGrid(out)
+	// g.printGrid(out)
 
 	// g.cleanR(3)
 	// g.printGrid(out)
@@ -56,14 +80,107 @@ func doTask(in *bufio.Reader, out *bufio.Writer) {
 
 	// g.mirorRtoL(4)
 	// g.mirorLtoR(3)
-	g.mirorTtoB(4)
+	// g.mirorTtoB(4)
 	// g.mirorBtoT(2)
 	// g = g._expand(0, 3)
 	// g.printGrid(out)
+	// fmt.Printf("_numToPoint(g, 1): %v\n", _numToPoint(g, 1))
+	// fmt.Printf("\n")
+	// fmt.Printf("_numToPoint(g, 9): %v\n", _numToPoint(g, 9))
+	// fmt.Printf("_numToPoint(g, 10): %v\n", _numToPoint(g, 10))
+	// fmt.Printf("_numToPoint(g, 11): %v\n", _numToPoint(g, 11))
+	// fmt.Printf("\n")
+	// fmt.Printf("_numToPoint(g, 17): %v\n", _numToPoint(g, 17))
+	// fmt.Printf("_numToPoint(g, 18): %v\n", _numToPoint(g, 18))
+	// fmt.Printf("_numToPoint(g, 19): %v\n", _numToPoint(g, 19))
+	// fmt.Printf("\n")
+	// fmt.Printf("_numToPoint(g, 26): %v\n", _numToPoint(g, 26))
+	// fmt.Printf("_numToPoint(g, 27): %v\n", _numToPoint(g, 27))
+	// fmt.Printf("_numToPoint(g, 28): %v\n", _numToPoint(g, 28))
+	// fmt.Printf("\n")
+	// fmt.Printf("_numToPoint(g, 24): %v\n", _numToPoint(g, 34))
 
 	// g._reduce()
-	g.printGrid(out)
+	// g.printGrid(out)
 
+}
+
+func (g *grid) applyOp(op Op) bool {
+	s := _numToPoint(g, op.s)
+	e := _numToPoint(g, op.e)
+
+	// fmt.Printf("s: %v\n", s)
+	// fmt.Printf("e: %v\n", e)
+
+	if s.y == e.y {
+		if s.x < e.x {
+			// fmt.Printf("mirorBtoT(%v)\n", s.y)
+			g.mirorBtoT(s.y)
+			return true
+		} else {
+			// fmt.Printf("mirorTtoB(%v)\n", s.y)
+			g.mirorTtoB(s.y)
+			return true
+		}
+	} else if s.x == e.x {
+		if s.y > e.y {
+			// fmt.Printf("mirorRtoL(%v)\n", s.x)
+			g.mirorRtoL(s.x)
+			return true
+		} else {
+			// fmt.Printf("mirorLtoR(%v)\n", s.x)
+			g.mirorLtoR(s.x)
+			return true
+		}
+	}
+
+	return false
+
+}
+
+func _numToPoint(g *grid, n int) Point {
+	w := g.sx
+	h := g.sy
+
+	fmt.Fprintf(gout, "w: %v, h: %v n: %v \n", w, h, n)
+
+	if n <= w+1 {
+		return Point{x: n, y: 1}
+	}
+	n -= w
+
+	if n <= h {
+		return Point{x: w + 1, y: n}
+	}
+	n -= h
+
+	if n <= w {
+		return Point{x: w - n + 2, y: h + 1}
+	}
+	n -= w
+
+	if n <= h {
+		return Point{x: 1, y: h - n + 2}
+	}
+
+	// str :=
+	panic(
+		fmt.Sprintf("cant parce point: g[%v:%v], n=%v", g.sx, g.sy, n),
+	)
+}
+
+func mereCell(dst byte, src byte) byte {
+	// if dst == '.' {
+	// 	return src
+	// }
+	// if src == '.' {
+	// 	return dst
+	// }
+	if src == '.' && dst == '.' {
+		return '.'
+	}
+
+	return '#'
 }
 
 func (g *grid) mirorTtoB(line int) {
@@ -76,7 +193,8 @@ func (g *grid) mirorTtoB(line int) {
 		src_y := line - shift_y - 1
 		dst_y := line + shift_y
 		for x := 0; x < eg.sx; x++ {
-			eg.g[ey+dst_y][x] = eg.g[ey+src_y][x]
+			// eg.g[ey+dst_y][x] = eg.g[ey+src_y][x]
+			eg.g[ey+dst_y][x] = mereCell(eg.g[ey+dst_y][x], eg.g[ey+src_y][x])
 		}
 	}
 	eg.cleanT(line + ey)
@@ -94,7 +212,8 @@ func (g *grid) mirorBtoT(line int) {
 		src_y := line + shift_y
 		dst_y := line - shift_y - 1
 		for x := 0; x < g.sx; x++ {
-			eg.g[dst_y+ey][x] = eg.g[src_y+ey][x]
+			// eg.g[dst_y+ey][x] = eg.g[src_y+ey][x]
+			eg.g[dst_y+ey][x] = mereCell(eg.g[dst_y+ey][x], eg.g[src_y+ey][x])
 		}
 	}
 	eg.cleanB(line + ey)
@@ -112,7 +231,9 @@ func (g *grid) mirorRtoL(col int) {
 		for shift_x := 0; shift_x < shift_x_max; shift_x++ {
 			src_x := col + shift_x
 			dst_x := col - shift_x - 1
-			eg.g[y][dst_x+ex] = eg.g[y][src_x+ex]
+
+			//eg.g[y][dst_x+ex] = eg.g[y][src_x+ex]
+			eg.g[y][dst_x+ex] = mereCell(eg.g[y][dst_x+ex], eg.g[y][src_x+ex])
 		}
 	}
 	eg.cleanR(col + ex)
@@ -130,8 +251,8 @@ func (g *grid) mirorLtoR(col int) {
 		for shift_x := 0; shift_x < shift_x_max; shift_x++ {
 			src_x := col - shift_x - 1
 			dst_x := col + shift_x
-
-			eg.g[y][dst_x+ex] = eg.g[y][src_x+ex]
+			//eg.g[y][dst_x+ex] = eg.g[y][src_x+ex]
+			eg.g[y][dst_x+ex] = mereCell(eg.g[y][dst_x+ex], eg.g[y][src_x+ex])
 		}
 	}
 	eg.cleanL(col + ex)
@@ -170,6 +291,10 @@ func (g *grid) _reduce() {
 	}
 	fx := g.sx
 	lx := 0
+
+	// fy := g.sy
+	// ly := 0
+
 	for y := 0; y < g.sy; y++ {
 		clrY := true
 		for x := 0; x < g.sx; x++ {
@@ -285,7 +410,7 @@ func readGrid(in *bufio.Reader, sx int, sy int) *grid {
 func (g *grid) printGrid(out *bufio.Writer) {
 	// fmt.Fprintln(out)
 
-	fmt.Fprintf(out, "[%v x %v]\n", g.sx, g.sy)
+	// fmt.Fprintf(out, "[%v x %v]\n", g.sx, g.sy)
 	for i := 0; i < g.sy; i++ {
 		fmt.Fprintln(out, string(g.g[i]))
 	}
