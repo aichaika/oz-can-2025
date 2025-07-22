@@ -40,7 +40,7 @@ func main() {
 	fmt.Fscan(in, &cnt)
 	// cnt = 1
 	for i := 1; i <= cnt; i++ {
-		fmt.Fprintf(out, "i: %v\n", i)
+		// fmt.Fprintf(out, "i: %v\n", i)
 		doTask(in, out)
 	}
 }
@@ -53,7 +53,7 @@ func doTask(in *bufio.Reader, out *bufio.Writer) {
 	g := readGrid(in, sx, sy)
 	ops := readOps(in, cnt)
 
-	g.printGrid(out)
+	// g.printGrid(out)
 	for _, op := range ops {
 		if !g.applyOp(op) {
 			fmt.Fprintln(out, "Unsuported ops (may be later)")
@@ -142,7 +142,7 @@ func _numToPoint(g *grid, n int) Point {
 	w := g.sx
 	h := g.sy
 
-	fmt.Fprintf(gout, "w: %v, h: %v n: %v \n", w, h, n)
+	// fmt.Fprintf(gout, "w: %v, h: %v n: %v \n", w, h, n)
 
 	if n <= w+1 {
 		return Point{x: n, y: 1}
@@ -286,14 +286,14 @@ func (g *grid) _expand(ex int, ey int) *grid {
 }
 
 func (g *grid) _reduce() {
-	ng := grid{
-		g: [][]byte{},
-	}
+	// ng := grid{
+	// 	g: [][]byte{},
+	// }
 	fx := g.sx
 	lx := 0
 
-	// fy := g.sy
-	// ly := 0
+	fy := g.sy
+	ly := 0
 
 	for y := 0; y < g.sy; y++ {
 		clrY := true
@@ -309,12 +309,21 @@ func (g *grid) _reduce() {
 			}
 		}
 		if !clrY {
-			ng.g = append(ng.g, g.g[y])
+			if y < fy {
+				fy = y
+			}
+			if y > ly {
+				ly = y
+			}
+			// ng.g = append(ng.g, g.g[y])
 		}
 	}
 
-	g.g = ng.g
-	g.sy = len(ng.g)
+	// g.g[y] = g.g[y][fx : lx+1]
+	g.g = g.g[fy : ly+1]
+	g.sy = len(g.g)
+	// g.g = ng.g
+	// g.sy = len(ng.g)
 	g.sx = lx - fx + 1
 
 	for y := 0; y < g.sy; y++ {
