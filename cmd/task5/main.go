@@ -2,13 +2,63 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"os"
 )
 
-type grid struct {
+type Cell struct {
+	T bool
+	B bool
+	L bool
+	R bool
+}
+
+var (
+	CellEmpty = Cell{}
+	CellFull  = Cell{T: true, B: true, L: true, R: true}
+)
+
+func (c Cell) mirorTtoB() Cell {
+	tmp := c.T
+	c.T = c.B
+	c.B = tmp
+	return c
+}
+
+func (c Cell) mirorLtoR() Cell {
+	tmp := c.L
+	c.L = c.R
+	c.R = tmp
+	return c
+}
+
+func mergeCell(a Cell, b Cell) Cell {
+	return Cell{
+		T: a.T || b.T,
+		B: a.B || b.B,
+		L: a.L || b.L,
+		R: a.R || b.R,
+	}
+}
+
+func repeatCell(c Cell, cnt int) []Cell {
+	res := make([]Cell, cnt)
+
+	for i := range res {
+		res[i] = c
+	}
+
+	return res
+}
+
+type BGrid struct {
 	g  [][]byte
+	sx int
+	sy int
+}
+
+type grid struct {
+	g  [][]Cell
 	sx int
 	sy int
 }
@@ -61,6 +111,46 @@ func doTask(in *bufio.Reader, out *bufio.Writer) {
 		g.printGrid(out)
 	}
 
+}
+
+func (c Cell) ToByte() byte {
+	switch {
+	case !c.T && !c.R && !c.B && !c.L:
+		return '.'
+	case c.T && c.R && c.B && c.L:
+		return '#'
+	case !c.T && !c.R && c.B && !c.L, c.T && c.R && !c.B && c.L:
+		return '^'
+	case !c.T && !c.R && !c.B && c.L, c.T && c.R && c.B && !c.L:
+		return '>'
+	case c.T && !c.R && !c.B && !c.L, !c.T && c.R && c.B && c.L:
+		return 'v'
+	case !c.T && c.R && !c.B && !c.L, c.T && !c.R && c.B && c.L:
+		return '<'
+	case c.T && !c.R && !c.B && c.L, !c.T && c.R && c.B && !c.L:
+		return '/'
+	case c.T && c.R && !c.B && !c.L, !c.T && !c.R && c.B && c.L:
+		return '\\'
+	case c.T && !c.R && c.B && !c.L, !c.T && c.R && !c.B && c.L:
+		return 'x'
+	}
+	return '?'
+}
+
+func (g *grid) ToBGrid() *BGrid {
+	bg := BGrid{
+		sx: g.sx,
+		sy: g.sy,
+		g:  make([][]byte, g.sy),
+	}
+
+	for y := 0; y < g.sy; y++ {
+		bg.g[y] = make([]byte, len(g.g[y]))
+		for x := 0; x < g.sx; x++ {
+			bg.g[y][x] = g.g[y][x].ToByte()
+		}
+	}
+	return &bg
 }
 
 func (g *grid) applyOp(op Op) bool {
@@ -134,7 +224,8 @@ func (g *grid) mirorTtoB(line int) {
 		src_y := line - shift_y - 1
 		dst_y := line + shift_y
 		for x := 0; x < eg.sx; x++ {
-			eg.g[ey+dst_y][x] = mereCell(eg.g[ey+dst_y][x], eg.g[ey+src_y][x])
+			// eg.g[ey+dst_y][x] = mereCell(eg.g[ey+dst_y][x], eg.g[ey+src_y][x])
+			eg.g[ey+dst_y][x] = mergeCell(eg.g[ey+dst_y][x], eg.g[ey+src_y][x].mirorTtoB())
 		}
 	}
 	eg.cleanT(line + ey)
@@ -152,7 +243,8 @@ func (g *grid) mirorBtoT(line int) {
 		src_y := line + shift_y
 		dst_y := line - shift_y - 1
 		for x := 0; x < g.sx; x++ {
-			eg.g[dst_y+ey][x] = mereCell(eg.g[dst_y+ey][x], eg.g[src_y+ey][x])
+			// eg.g[dst_y+ey][x] = mereCell(eg.g[dst_y+ey][x], eg.g[src_y+ey][x])
+			eg.g[dst_y+ey][x] = mergeCell(eg.g[dst_y+ey][x], eg.g[src_y+ey][x].mirorTtoB())
 		}
 	}
 	eg.cleanB(line + ey)
@@ -170,7 +262,8 @@ func (g *grid) mirorRtoL(col int) {
 		for shift_x := 0; shift_x < shift_x_max; shift_x++ {
 			src_x := col + shift_x
 			dst_x := col - shift_x - 1
-			eg.g[y][dst_x+ex] = mereCell(eg.g[y][dst_x+ex], eg.g[y][src_x+ex])
+			// eg.g[y][dst_x+ex] = mereCell(eg.g[y][dst_x+ex], eg.g[y][src_x+ex])
+			eg.g[y][dst_x+ex] = mergeCell(eg.g[y][dst_x+ex], eg.g[y][src_x+ex].mirorLtoR())
 		}
 	}
 	eg.cleanR(col + ex)
@@ -188,7 +281,7 @@ func (g *grid) mirorLtoR(col int) {
 		for shift_x := 0; shift_x < shift_x_max; shift_x++ {
 			src_x := col - shift_x - 1
 			dst_x := col + shift_x
-			eg.g[y][dst_x+ex] = mereCell(eg.g[y][dst_x+ex], eg.g[y][src_x+ex])
+			eg.g[y][dst_x+ex] = mergeCell(eg.g[y][dst_x+ex], eg.g[y][src_x+ex].mirorLtoR())
 		}
 	}
 	eg.cleanL(col + ex)
@@ -198,22 +291,24 @@ func (g *grid) mirorLtoR(col int) {
 
 func (g *grid) _expand(ex int, ey int) *grid {
 	ng := grid{
-		g: make([][]byte, 0, g.sy+(2*ey)),
+		g: make([][]Cell, 0, g.sy+(2*ey)),
 	}
 	for y := 0; y < ey; y++ {
-		ng.g = append(ng.g, bytes.Repeat([]byte{'.'}, g.sx+(ex*2)))
+		// ng.g = append(ng.g, bytes.Repeat([]Cell{}, g.sx+(ex*2)))
+		ng.g = append(ng.g, repeatCell(Cell{}, g.sx+(ex*2)))
+
 	}
 
 	for y := 0; y < g.sy; y++ {
-		line := make([]byte, 0, g.sx+(2*ex))
-		line = append(line, bytes.Repeat([]byte{'.'}, ex)...)
+		line := make([]Cell, 0, g.sx+(2*ex))
+		line = append(line, repeatCell(Cell{}, ex)...)
 		line = append(line, g.g[y]...)
-		line = append(line, bytes.Repeat([]byte{'.'}, ex)...)
+		line = append(line, repeatCell(Cell{}, ex)...)
 		ng.g = append(ng.g, line)
 	}
 
 	for y := 0; y < ey; y++ {
-		ng.g = append(ng.g, bytes.Repeat([]byte{'.'}, g.sx+(ex*2)))
+		ng.g = append(ng.g, repeatCell(Cell{}, g.sx+(ex*2)))
 	}
 	ng.sx = g.sx + (2 * ex)
 	ng.sy = g.sy + (2 * ey)
@@ -231,7 +326,7 @@ func (g *grid) _reduce() {
 	for y := 0; y < g.sy; y++ {
 		clrY := true
 		for x := 0; x < g.sx; x++ {
-			if g.g[y][x] != '.' {
+			if g.g[y][x] != CellEmpty {
 				clrY = false
 				if x < fx {
 					fx = x
@@ -264,7 +359,7 @@ func (g *grid) _reduce() {
 func (g *grid) cleanT(line int) {
 	for y := 0; y < line; y++ {
 		for x := 0; x < g.sx; x++ {
-			g.g[y][x] = '.'
+			g.g[y][x] = CellEmpty
 		}
 	}
 }
@@ -272,7 +367,7 @@ func (g *grid) cleanT(line int) {
 func (g *grid) cleanB(line int) {
 	for y := line; y < g.sy; y++ {
 		for x := 0; x < g.sx; x++ {
-			g.g[y][x] = '.'
+			g.g[y][x] = CellEmpty
 		}
 	}
 }
@@ -280,7 +375,7 @@ func (g *grid) cleanB(line int) {
 func (g *grid) cleanR(col int) {
 	for y := 0; y < g.sy; y++ {
 		for x := col; x < g.sx; x++ {
-			g.g[y][x] = '.'
+			g.g[y][x] = CellEmpty
 		}
 	}
 }
@@ -288,7 +383,7 @@ func (g *grid) cleanR(col int) {
 func (g *grid) cleanL(col int) {
 	for y := 0; y < g.sy; y++ {
 		for x := 0; x < col; x++ {
-			g.g[y][x] = '.'
+			g.g[y][x] = CellEmpty
 		}
 	}
 }
@@ -330,17 +425,24 @@ func readOps(in *bufio.Reader, cnt int) []Op {
 
 func readGrid(in *bufio.Reader, sx int, sy int) *grid {
 	g := grid{
-		g:  [][]byte{},
+		g:  make([][]Cell, sy),
 		sx: sx,
 		sy: sy,
 	}
 	// fmt.Fscan(in, &g.sy, &g.sx)
 	// fmt.Fscanln(in)
 
-	for i := 0; i < g.sy; i++ {
-		var line []byte
-		fmt.Fscanln(in, &line)
-		g.g = append(g.g, line)
+	for y := 0; y < g.sy; y++ {
+		var bline []byte
+		fmt.Fscanln(in, &bline)
+		g.g[y] = make([]Cell, sx)
+		for x := 0; x < g.sx; x++ {
+			if bline[x] == '#' {
+				g.g[y][x] = CellFull
+			} else {
+				g.g[y][x] = CellEmpty
+			}
+		}
 	}
 	return &g
 }
@@ -348,9 +450,11 @@ func readGrid(in *bufio.Reader, sx int, sy int) *grid {
 func (g *grid) printGrid(out *bufio.Writer) {
 	// fmt.Fprintln(out)
 
+	bg := g.ToBGrid()
+
 	// fmt.Fprintf(out, "[%v x %v]\n", g.sx, g.sy)
-	for i := 0; i < g.sy; i++ {
-		fmt.Fprintln(out, string(g.g[i]))
+	for i := 0; i < bg.sy; i++ {
+		fmt.Fprintln(out, string(bg.g[i]))
 	}
 	fmt.Fprintln(out)
 }
