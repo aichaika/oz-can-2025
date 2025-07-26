@@ -49,17 +49,13 @@ func main() {
 	defer out.Flush()
 	var cnt int
 
-	// gg := grid{sx: 1, sy: 3}
-
-	// _numToPoint(&gg, 5)
-	// return
-
 	fmt.Fscan(in, &cnt)
-	cnt = 1
+	// cnt = 1 // debug
 	for i := 1; i <= cnt; i++ {
-		// fmt.Fprintf(out, "i: %v\n", i)
+		// fmt.Fprintf(out, "i: %v\n", i) // debug
 		doTask(in, out)
 	}
+
 }
 
 func doTask(in *bufio.Reader, out *bufio.Writer) {
@@ -68,41 +64,72 @@ func doTask(in *bufio.Reader, out *bufio.Writer) {
 	fmt.Fscanln(in)
 
 	g := readGrid(in, sx, sy)
-	// ops := readOps(in, cnt)
-	// for _, op := range ops {
-	// 	if !g.applyOp(op) {
-	// 		fmt.Fprintln(out, "Unsuported ops (may be later)")
-	// 		return
-	// 	}
-	// 	g.printGrid(out)
+	// g.printGrid(out) // debug
+	ops := readOps(in, cnt)
+	for _, op := range ops {
+		// fmt.Fprintf(out, "op: %v\n", op) // debug
+		if !g.applyOp(op) {
+			fmt.Fprintln(out, "Unsuported ops (may be later)")
+			return
+		}
+		g.printGrid(out)
+	}
+
+	// readOps(in, cnt)
+
+	// g.mirorULtoR(Point{x: 1, y: 6})
+
+	// g.printGrid(out)
+}
+
+func (g *grid) mirorULtoR(p Point) {
+	e := g.sy
+	if e < g.sx {
+		e = g.sx
+	}
+	eg := g._expand(e, e)
+
+	p.x += -1 + e
+	p.y += -1 + e
+
+	for p.x != 0 && p.y != eg.sy {
+		p.x -= 1
+		p.y += 1
+	}
+
+	// if p.x == eg.sx && p.y == eg.sy {
+
 	// }
 
-	readOps(in, cnt)
+	for i := 1; ; i++ {
+		dx := p.x + i
+		dy := p.y - i - 1
+		// fmt.Fprintf(gout, "i: %v, dy: %v, dx: %v, sy: %v, sx: %v\n", i, dy, dx, eg.sy, eg.sx) // debug
+		if dx >= eg.sx || dx <= 0 {
+			break
+		}
+		if dy >= eg.sy || dy <= 0 {
+			break
+		}
 
-	// g.cleanUR(Point{x: 1, y: 6})
-	// g.mirorDRtoL(Point{x: 1, y: 1})
-	g.printGrid(out)
+		eg.g[dy][dx] = eg.g[dy][dx].mirorULtoR(true)
 
-	g.mirorDLtoR(Point{x: 1, y: 2})
-	g.printGrid(out)
+		// g.g[dy][dx] = Cell{T: true, L: true}
 
-	// g.mirorDRtoL(Point{x: 1, y: 2})
-	// g.printGrid(out)
+		for y := 1; dy-y >= 0 && dx+y < eg.sx; y++ {
+			eg.g[dy][dx+y] = mergeCell(eg.g[dy][dx+y], eg.g[dy-y][dx].mirorULtoR(false))
 
-	// g.mirorURtoL(Point{x: 1, y: 6})
-	// g.printGrid(out)
+			// eg.g[dy][dx+y] = Cell{T: true}
+			// eg.g[dy-y][dx] = Cell{T: true, B: true}
 
-	// g.mirorURtoL(Point{x: 1, y: 5})
-	// g.mirorULtoR(Point{x: 2, y: 3})
+			eg.g[dy-y][dx] = CellEmpty
+		}
 
-	// g.mirorDLtoR(Point{x: 3, y: 1})
-	// g.mirorDLtoR(Point{x: 1, y: 1})
-	// g.mirorDRtoL(Point{x: 3, y: 1})
-	// g.cleanDR(Point{x: 0, y: 0})
-	// g.cleanDL(Point{x: 0, y: 0})
+	}
+	// eg.printGrid(gout)
 
-	// g.printGrid(out)
-
+	eg._reduce()
+	*g = *eg
 }
 
 func (g *grid) mirorDLtoR(p Point) {
@@ -140,6 +167,51 @@ func (g *grid) mirorDLtoR(p Point) {
 	*g = *eg
 }
 
+func (g *grid) applyOp(op Op) bool {
+	s := _numToPoint(g, op.s)
+	e := _numToPoint(g, op.e)
+	if s.y == e.y {
+		if s.x < e.x {
+			g.mirorBtoT(s.y)
+			return true
+		} else {
+			g.mirorTtoB(s.y)
+			return true
+		}
+	} else if s.x == e.x {
+		if s.y > e.y {
+			g.mirorRtoL(s.x)
+			return true
+		} else {
+			g.mirorLtoR(s.x)
+			return true
+		}
+	} else if s.y > e.y {
+		if s.x > e.x {
+			// fmt.Fprintf(gout, "mirorDRtoL(%v:%v)", e.x, e.y) //debug
+			g.mirorDRtoL(Point{x: e.x, y: e.y})
+			return true
+		} else {
+			// fmt.Fprintf(gout, "mirorURtoL(%v:%v)", s.x, s.y) //debug
+			g.mirorURtoL(Point{x: s.x, y: s.y})
+			return true
+		}
+	} else if s.y < e.y {
+		if s.x > e.x {
+			// fmt.Fprintf(gout, "mirorULtoR(%v:%v)", e.x, e.y) //debug
+			g.mirorULtoR(Point{x: e.x, y: e.y})
+			return true
+		} else {
+			// fmt.Fprintf(gout, "mirorDLtoR(%v:%v)", s.x, s.y) //debug
+			g.mirorDLtoR(Point{x: s.x, y: s.y})
+			return true
+		}
+	}
+
+	return false
+
+}
+
 func (g *grid) mirorDRtoL(p Point) {
 	e := g.sy
 	if e < g.sx {
@@ -168,44 +240,6 @@ func (g *grid) mirorDRtoL(p Point) {
 
 			eg.g[dy-y][dx] = CellEmpty
 			// eg.g[dy][dx-y] = Cell{T: true, B: true}
-		}
-
-	}
-
-	eg._reduce()
-	*g = *eg
-}
-
-func (g *grid) mirorULtoR(p Point) {
-	e := g.sy
-	if e < g.sx {
-		e = g.sx
-	}
-	eg := g._expand(e, e)
-
-	p.x += -1 + e
-	p.y += -1 + e
-
-	for p.x != 0 && p.y != eg.sy {
-		p.x -= 1
-		p.y += 1
-	}
-
-	for i := 0; (p.x+i) < eg.sx && (p.y-i) > 0; i++ {
-		dx := p.x + i
-		dy := p.y - i - 1
-
-		eg.g[dy][dx] = eg.g[dy][dx].mirorULtoR(true)
-
-		// eg.g[dy][dx] = Cell{T: true, L: true}
-
-		for y := 1; dy-y >= 0 || dx+y >= eg.sx; y++ {
-			eg.g[dy][dx+y] = mergeCell(eg.g[dy][dx+y], eg.g[dy-y][dx].mirorULtoR(false))
-
-			// eg.g[dy][dx+y] = Cell{T: true}
-			// eg.g[dy-y][dx] = Cell{T: true, B: true}
-
-			eg.g[dy-y][dx] = CellEmpty
 		}
 
 	}
@@ -245,85 +279,61 @@ func (g *grid) mirorURtoL(p Point) {
 
 	}
 
-	// eg._reduce()
+	eg._reduce()
 	*g = *eg
 }
 
-// func (g *grid) mirorDLtoR(p Point) {
-// 	e := g.sy
-// 	if e < g.sx {
-// 		e = g.sx
-// 	}
-// 	eg := g._expand(e, e)
-
+// func (g *grid) cleanUR(p Point) {
 // 	p.x -= 1
 // 	p.y -= 1
 
-// 	for i := 0; (i+p.x) < g.sx && (i+p.y) < g.sy; i++ {
-// 		eg.g[e+i+p.y][e+i+p.x] = eg.g[e+i+p.y][e+i+p.x].mirorDLtoR(true)
-// 		for y := i + 1; y < g.sy; y++ {
-// 			eg.g[e+p.y+i][e+p.x+y] = mergeCell(eg.g[e+p.y+i][e+p.x+y], eg.g[e+p.y+y][e+p.x+i].mirorDLtoR(false))
+// 	for y := 0; y < g.sy; y++ {
+// 		for x := 0; x < g.sx; x++ {
+// 			if p.y-y < x+1 {
+// 				g.g[y][x] = CellEmpty
+// 			}
 // 		}
 // 	}
-
-// 	p.x += e
-// 	p.y += e
-// 	eg.cleanDL(p)
-// 	eg._reduce()
-// 	*g = *eg
 // }
 
-func (g *grid) cleanUR(p Point) {
-	p.x -= 1
-	p.y -= 1
+// func (g *grid) cleanUL(p Point) {
+// 	p.x -= 1
+// 	p.y -= 1
 
-	for y := 0; y < g.sy; y++ {
-		for x := 0; x < g.sx; x++ {
-			if p.y-y < x+1 {
-				g.g[y][x] = CellEmpty
-			}
-		}
-	}
-}
+// 	for y := 0; y < g.sy; y++ {
+// 		for x := 0; x < g.sx; x++ {
+// 			if p.y-y > x+1 {
+// 				g.g[y][x] = CellEmpty
+// 			}
+// 		}
+// 	}
+// }
 
-func (g *grid) cleanUL(p Point) {
-	p.x -= 1
-	p.y -= 1
+// func (g *grid) cleanDR(p Point) {
+// 	p.x -= 1
+// 	p.y -= 1
 
-	for y := 0; y < g.sy; y++ {
-		for x := 0; x < g.sx; x++ {
-			if p.y-y > x+1 {
-				g.g[y][x] = CellEmpty
-			}
-		}
-	}
-}
+// 	for y := 0; y < g.sy; y++ {
+// 		for x := 0; x < g.sx; x++ {
+// 			if (y - p.y) < (x - p.x) {
+// 				g.g[y][x] = CellEmpty
+// 			}
+// 		}
+// 	}
+// }
 
-func (g *grid) cleanDR(p Point) {
-	p.x -= 1
-	p.y -= 1
+// func (g *grid) cleanDL(p Point) {
+// 	p.x -= 1
+// 	p.y -= 1
 
-	for y := 0; y < g.sy; y++ {
-		for x := 0; x < g.sx; x++ {
-			if (y - p.y) < (x - p.x) {
-				g.g[y][x] = CellEmpty
-			}
-		}
-	}
-}
-
-func (g *grid) cleanDL(p Point) {
-	p.x -= 1
-	p.y -= 1
-
-	for y := 0; y < g.sy; y++ {
-		for x := 0; x < g.sx; x++ {
-			if (y - p.y) > (x - p.x) {
-				g.g[y][x] = CellEmpty
-			}
-		}
-	}
-}
+// 	for y := 0; y < g.sy; y++ {
+// 		for x := 0; x < g.sx; x++ {
+// 			if (y - p.y) > (x - p.x) {
+// 				g.g[y][x] = CellEmpty
+// 			}
+// 		}
+// 	}
+// }
 
 func (c Cell) ToByte() byte {
 	switch {
@@ -365,34 +375,12 @@ func (g *grid) ToBGrid() *BGrid {
 	return &bg
 }
 
-func (g *grid) applyOp(op Op) bool {
-	s := _numToPoint(g, op.s)
-	e := _numToPoint(g, op.e)
-	if s.y == e.y {
-		if s.x < e.x {
-			g.mirorBtoT(s.y)
-			return true
-		} else {
-			g.mirorTtoB(s.y)
-			return true
-		}
-	} else if s.x == e.x {
-		if s.y > e.y {
-			g.mirorRtoL(s.x)
-			return true
-		} else {
-			g.mirorLtoR(s.x)
-			return true
-		}
-	}
-
-	return false
-
-}
-
 func _numToPoint(g *grid, n int) Point {
+	sn := n
 	w := g.sx
 	h := g.sy
+
+	// fmt.Fprintf(gout, "g: %+v\n", *g)
 
 	if n <= w+1 {
 		return Point{x: n, y: 1}
@@ -414,7 +402,7 @@ func _numToPoint(g *grid, n int) Point {
 	}
 
 	panic(
-		fmt.Sprintf("cant parce point: g[%v:%v], n=%v", g.sx, g.sy, n),
+		fmt.Sprintf("cant parce point: g[%v:%v], n=%v", g.sx, g.sy, sn),
 	)
 }
 
@@ -663,40 +651,72 @@ func (g *grid) printGrid(out *bufio.Writer) {
 	fmt.Fprintln(out)
 }
 
-func (c Cell) mirorDLtoR(clr bool) Cell {
-	nc := Cell{T: c.L, R: c.B}
-	if !clr {
-		nc.L = c.T
-		nc.B = c.R
+func (c Cell) mirorDLtoR(fold bool) Cell {
+	if !fold {
+		return Cell{
+			T: c.L,
+			L: c.T,
+			R: c.B,
+			B: c.R,
+		}
 	}
-	return nc
+	return Cell{
+		T: c.T || c.L,
+		L: false,
+		R: c.R || c.B,
+		B: false,
+	}
 }
 
-func (c Cell) mirorDRtoL(clr bool) Cell {
-	nc := Cell{L: c.T, B: c.R}
-	if !clr {
-		nc.T = c.L
-		nc.R = c.B
+func (c Cell) mirorDRtoL(fold bool) Cell {
+	if !fold {
+		return Cell{
+			T: c.L,
+			L: c.T,
+			R: c.B,
+			B: c.R,
+		}
 	}
-	return nc
+	return Cell{
+		T: false,
+		L: c.L || c.T,
+		R: false,
+		B: c.B || c.R,
+	}
 }
 
-func (c Cell) mirorURtoL(clr bool) Cell {
-	nc := Cell{T: c.R, L: c.B}
-	if !clr {
-		nc.R = c.T
-		nc.B = c.L
+func (c Cell) mirorURtoL(fold bool) Cell {
+	if !fold {
+		return Cell{
+			T: c.R,
+			R: c.T,
+			L: c.B,
+			B: c.L,
+		}
 	}
-	return nc
+	return Cell{
+		T: c.T || c.R,
+		L: c.L || c.B,
+		R: false,
+		B: false,
+	}
 }
 
-func (c Cell) mirorULtoR(clr bool) Cell {
-	nc := Cell{R: c.T, B: c.L}
-	if !clr {
-		nc.T = c.R
-		nc.L = c.B
+func (c Cell) mirorULtoR(fold bool) Cell {
+	if !fold {
+		return Cell{
+			T: c.R,
+			R: c.T,
+			L: c.B,
+			B: c.L,
+		}
 	}
-	return nc
+	return Cell{
+		T: false,
+		L: false,
+		R: c.R || c.T,
+		B: c.B || c.L,
+	}
 }
 
 func (c Cell) mirorTtoB() Cell {
