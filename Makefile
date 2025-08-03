@@ -1,3 +1,20 @@
+с1:
+		go run cmd/can1/main.go
+
+с2:
+		go run cmd/can2/main.go
+
+с3:
+		go run cmd/can3/main.go
+
+с4:
+		go run cmd/can4/main.go
+
+с5:
+		go run cmd/can5/main.go
+
+
+
 t1:
 		go run cmd/task1/main.go
 
