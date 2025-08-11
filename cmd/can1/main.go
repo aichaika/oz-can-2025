@@ -7,97 +7,83 @@ import (
 	"strings"
 )
 
-type grid struct {
-	g  [][]byte
-	sx int
-	sy int
+type Grid struct {
+	grid   [][]byte
+	size_x int
+	size_y int
 }
 
-var gout *bufio.Writer
+var in *bufio.Reader
+var out *bufio.Writer
 
 func main() {
-	in := bufio.NewReader(os.Stdin)
-	out := bufio.NewWriter(os.Stdout)
+	in = bufio.NewReader(os.Stdin)
+	out = bufio.NewWriter(os.Stdout)
 	defer out.Flush()
 
-	gout = out
+	var task_cnt int
 
-	var cnt int
-
-	fmt.Fscan(in, &cnt)
+	fmt.Fscan(in, &task_cnt)
 	fmt.Fscanln(in)
-	// cnt = 1
-	for i := 1; i <= cnt; i++ {
+	// task_cnt = 1
+	for i := 1; i <= task_cnt; i++ {
 		// fmt.Fprintf(out, "test num: %v\n", i)
-		doTask(in, out)
+		doTask()
 	}
 }
 
-func doTask(in *bufio.Reader, out *bufio.Writer) {
-	var sl, ss int
-	fmt.Fscan(in, &sl, &ss)
+func doTask() {
+	var cnt_line, cnt_diag int
+	fmt.Fscan(in, &cnt_line, &cnt_diag)
 	fmt.Fscanln(in)
 
-	sy := ss*2 + 1
-	sx := sl + ss*2
+	size_y := cnt_diag*2 + 1
+	size_x := cnt_line + cnt_diag*2
 
-	// fmt.Fprintf(gout, "sl: %v\n", sl)
-	// fmt.Fprintf(gout, "ss: %v\n", ss)
-	// fmt.Fprintf(gout, "sy: %v\n", sy)
-	// fmt.Fprintf(gout, "sx: %v\n", sx)
+	g := MakeGrid(size_x, size_y, ' ')
+	g.DrawHex(cnt_line, cnt_diag)
 
-	// fmt.Printf("sy: %v\n", sy)
-	// fmt.Printf("sx: %v\n", sx)
-
-	g := makeGrid(sx, sy)
-	g.makeFigure(sl, ss)
-
-	g.printGrid(out)
+	g.Print()
 
 }
 
-func (g *grid) makeFigure(sl int, ss int) {
-	for x := 0; x < sl; x++ {
-		g.g[0][ss+x] = '_'
-		g.g[g.sy-1][ss+x] = '_'
+func (g *Grid) DrawHex(cnt_line int, cnt_diag int) {
+	for x := 0; x < cnt_line; x++ {
+		g.grid[0][cnt_diag+x] = '_'
+		g.grid[g.size_y-1][cnt_diag+x] = '_'
 	}
 
-	for y := 1; y < g.sy/2+1; y++ {
-		g.g[y][g.sy/2-y] = '/' // +
-
-		g.g[y][sl+ss+y-1] = 'x' // -
-		// g.g[y][sl+ss+y-1] = 'x' // -
-
-		g.g[y][sl+ss+y-1] = '\\'        // -
-		g.g[y+ss][sl+ss+g.sy/2-y] = '/' // -
-
-		g.g[y+ss][y-1] = '\\' // +
+	for y := 0; y < cnt_diag; y++ {
+		g.grid[1+y][-1+cnt_diag-y] = '/'
+		g.grid[1+y][cnt_diag+cnt_line+y] = '\\'
+		g.grid[1+cnt_diag+y][y] = '\\'
+		g.grid[1+cnt_diag+y][-1+cnt_diag+cnt_diag+cnt_line-y] = '/'
 	}
 }
 
-func makeGrid(sx int, sy int) *grid {
-	g := grid{
-		sx: sx,
-		sy: sy,
+func MakeGrid(size_x int, size_y int, char byte) *Grid {
+	g := Grid{
+		size_x: size_x,
+		size_y: size_y,
 	}
 
-	g.g = make([][]byte, sy)
-	for y := range g.g {
-		g.g[y] = make([]byte, sx)
-		for x := range g.g[y] {
-			g.g[y][x] = ' '
+	g.grid = make([][]byte, size_y)
+	for y := range g.grid {
+		g.grid[y] = make([]byte, size_x)
+		for x := range g.grid[y] {
+			g.grid[y][x] = char
 		}
 	}
 
 	return &g
 }
 
-func (g *grid) printGrid(out *bufio.Writer) {
-	// fmt.Fprintln(out)
+func (g *Grid) Print() {
+	// fmt.Fprintln)
 
-	// fmt.Fprintf(out, "[%v x %v]\n", g.sx, g.sy)
-	for i := 0; i < g.sy; i++ {
-		fmt.Fprintln(out, strings.TrimRight(string(g.g[i]), " "))
+	// fmt.Fprintf(out, "[%v x %v]\n", g.size_x, g.size_y)
+	for i := 0; i < g.size_y; i++ {
+		fmt.Fprintln(out, strings.TrimRight(string(g.grid[i]), " "))
 	}
-	// fmt.Fprintln(out)
+	// fmt.Fprintln()
 }
